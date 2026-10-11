@@ -1,0 +1,131 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  FACULTY
+  STUDENT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  createdAt DateTime @default(now())
+  student   Student?
+  faculty   Faculty?
+  notices   Notice[]
+}
+
+model Department {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  code     String    @unique
+  students Student[]
+  faculty  Faculty[]
+  courses  Course[]
+}
+
+model Student {
+  id           Int          @id @default(autoincrement())
+  rollNumber   String       @unique
+  semester     Int          @default(1)
+  phone        String?
+  userId       Int          @unique
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  departmentId Int
+  department   Department   @relation(fields: [departmentId], references: [id])
+  enrollments  Enrollment[]
+  attendance   Attendance[]
+  marks        Marks[]
+}
+
+model Faculty {
+  id           Int        @id @default(autoincrement())
+  employeeId   String     @unique
+  phone        String?
+  userId       Int        @unique
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  departmentId Int
+  department   Department @relation(fields: [departmentId], references: [id])
+  courses      Course[]
+}
+
+model Course {
+  id           Int          @id @default(autoincrement())
+  code         String       @unique
+  name         String
+  credits      Int
+  semester     Int
+  departmentId Int
+  department   Department   @relation(fields: [departmentId], references: [id])
+  facultyId    Int?
+  faculty      Faculty?     @relation(fields: [facultyId], references: [id])
+  enrollments  Enrollment[]
+  attendance   Attendance[]
+  marks        Marks[]
+}
+
+model Enrollment {
+  id        Int     @id @default(autoincrement())
+  studentId Int
+  courseId  Int
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course    Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, courseId])
+}
+
+model Attendance {
+  id        Int              @id @default(autoincrement())
+  date      DateTime
+  status    AttendanceStatus
+  studentId Int
+  courseId  Int
+  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course    Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, courseId, date])
+}
+
+model Marks {
+  id        Int     @id @default(autoincrement())
+  internal  Float   @default(0)
+  external  Float   @default(0)
+  grade     String?
+  studentId Int
+  courseId  Int
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course    Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, courseId])
+}
+
+model Notice {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+  authorId  Int
+  author    User     @relation(fields: [authorId], references: [id])
+}
